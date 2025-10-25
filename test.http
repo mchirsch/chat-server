@@ -1,0 +1,90 @@
+# tests.http
+# For VS Code REST Client extension
+# Run each request by clicking "Send Request" in VS Code
+# Assumes server is running: deno run --allow-net --allow-env server.ts
+# Assumes database has user: name="alice", password="pass123"
+
+# POST /auth/login - Authenticate user and get token
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "name": "test",
+  "password": "1234"
+}
+
+# Expected Response:
+# Status: 200 OK
+# Body: {"token": "..."}
+
+###
+
+# GET /users - Get all users
+GET http://localhost:8000/users
+Content-Type: application/json
+
+# Expected Response:
+# Status: 200 OK
+# Body: [{"id": 1, "name": "alice", "profile_picture_url": "...", "created_at": "..."}, ...]
+
+###
+
+# GET /messages - Get all messages
+GET http://localhost:8000/messages
+Content-Type: application/json
+
+# Expected Response:
+# Status: 200 OK
+# Body: [{"id": 1, "user_id": 1, "body": "...", "channel": "...", "created_at": "..."}, ...]
+
+###
+
+# GET /messages/channel/general - Get messages for a specific channel
+GET http://localhost:8000/messages/channel/general
+Content-Type: application/json
+
+# Expected Response:
+# Status: 200 OK
+# Body: [{"id": 1, "user_id": 1, "body": "...", "channel": "general", "created_at": "..."}, ...]
+
+###
+
+# GET /channels - Get list of channels
+GET http://localhost:8000/channels
+Content-Type: application/json
+
+# Expected Response:
+# Status: 200 OK
+# Body: ["general", "random"]
+
+###
+
+# POST /users - Update authenticated user's profile
+POST http://localhost:8000/users
+Content-Type: application/json
+Authorization: Bearer AUTH_TOKEN
+
+{
+  "name": "test",
+  "profile_picture_url": "https://example.com/alice_new.jpg"
+}
+
+# Expected Response:
+# Status: 200 OK
+# Body: {"id": 1, "name": "alice_new", "profile_picture_url": "https://example.com/alice_new.jpg", "created_at": "..."}
+
+###
+
+# POST /messages - Create a new message
+POST http://localhost:8000/messages
+Content-Type: application/json
+Authorization: Bearer AUTH_TOKEN
+
+{
+  "body": "Hello from alice",
+  "channel": "general"
+}
+
+# Expected Response:
+# Status: 201 Created
+# Body: {"id": 1, "user_id": 1, "body": "Hello from alice", "channel": "general", "created_at": "..."}
