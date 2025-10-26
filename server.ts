@@ -139,11 +139,11 @@ async function handler(req: Request): Promise<Response> {
     }
     const userId = userIdOrError;
     try {
-      const body: Pick<Message, 'body' | 'channel'> = await req.json();
+      const body = await req.json() as Partial<Message>;
       if (!body.body) {
         return createResponse("Missing body", 400);
       }
-      const message = await addMessage({ body: body.body, channel: body.channel, user_id: userId });
+      const message = await addMessage({ ...body, user_id: userId } as Message);
       return createResponse(message, 201);
     } catch (error) {
       return createResponse((error as Error).message || "Server error", 500);

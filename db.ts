@@ -74,7 +74,7 @@ export async function addMessage(message: Message): Promise<Message> {
   try {
     const result = await sql`
       INSERT INTO messages (body, user_id, attachments, in_reply_to, channel)
-      VALUES (${message.body}, ${message.user_id}, ${JSON.stringify(message.attachments || [])}, ${message.in_reply_to || null}, ${message.channel || 'general'})
+      VALUES (${message.body}, ${message.user_id}, ${message.attachments || []}, ${message.in_reply_to || null}, ${message.channel || 'general'})
       RETURNING *
     `;
     return result[0] as Message;
