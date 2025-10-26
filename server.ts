@@ -35,8 +35,14 @@ function verifyToken(req: Request): number | Response {
 }
 
 async function handler(req: Request): Promise<Response> {
+
   const url = new URL(req.url);
   const path = url.pathname;
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*", // Allow all origins
+  };
 
   // -------------------- Auth --------------------
 
@@ -56,7 +62,7 @@ async function handler(req: Request): Promise<Response> {
       tokenStore.set(token, { userId: user.id!, expiry });
       return new Response(JSON.stringify({ token, user_id: user.id!, expiry }), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response((error as Error).message || "Server error", { status: 500 });
@@ -71,7 +77,7 @@ async function handler(req: Request): Promise<Response> {
       const users = await getUsers();
       return new Response(JSON.stringify(users), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response("Server error retrieving users", { status: 500 });
@@ -93,7 +99,7 @@ async function handler(req: Request): Promise<Response> {
       const updatedUser = await updateUser(userId, body);
       return new Response(JSON.stringify(updatedUser), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response((error as Error).message === "User not found" ? "User not found" : "Server error", { status: (error as Error).message === "User not found" ? 404 : 500 });
@@ -108,7 +114,7 @@ async function handler(req: Request): Promise<Response> {
       const messages = await getMessages();
       return new Response(JSON.stringify(messages), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response("Server error retrieving messages", { status: 500 });
@@ -125,7 +131,7 @@ async function handler(req: Request): Promise<Response> {
       const messages = await getMessagesByChannel(decodeURIComponent(channel));
       return new Response(JSON.stringify(messages), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response("Server error retrieving channel messages", { status: 500 });
@@ -147,7 +153,7 @@ async function handler(req: Request): Promise<Response> {
       const message = await addMessage({ body: body.body, channel: body.channel, user_id: userId });
       return new Response(JSON.stringify(message), {
         status: 201,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response((error as Error).message || "Server error", { status: 500 });
@@ -162,7 +168,7 @@ async function handler(req: Request): Promise<Response> {
       const channels = await getChannels();
       return new Response(JSON.stringify(channels), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
     } catch (error) {
       return new Response("Server error retrieving channels", { status: 500 });
