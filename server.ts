@@ -130,7 +130,7 @@ async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // POST /messages
+  // POST /messages - Add a message
   if (req.method === "POST" && path === "/messages") {
     const userIdOrError = verifyToken(req);
     if (userIdOrError instanceof Response) {
