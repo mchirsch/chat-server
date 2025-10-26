@@ -4,180 +4,169 @@ import { User, Message } from "./types.ts";
 
 const port = Deno.env.get("PORT") ? parseInt(Deno.env.get("PORT")!) : 8000;
 
-// In-memory token store... this is stateful, so not ideal for scalability / serverless
+// In-memory token store (stateful, not ideal for serverless)
 const tokenStore = new Map<string, { userId: number; expiry: number }>();
+
+// Helper function to create responses with CORS headers
+function createResponse(body: string | object, status: number): Response {
+  const headers = {
+    "Content-Type": typeof body === "string" ? "text/plain" : "application/json",
+    "Access-Control-Allow-Origin": "*",
+  };
+  return new Response(typeof body === "object" ? JSON.stringify(body) : body, { status, headers });
+}
 
 // Generate a random token
 function generateToken(): string {
-  return crypto.randomUUID(); // 36-char random UUID
+  return crypto.randomUUID();
 }
 
 // Middleware to verify token
 function verifyToken(req: Request): number | Response {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return new Response("Missing or invalid Authorization header", { status: 401 });
+    return createResponse("Missing or invalid Authorization header", 401);
   }
-
   const token = authHeader.replace("Bearer ", "");
   const tokenData = tokenStore.get(token);
   if (!tokenData) {
-    return new Response("Invalid token", { status: 401 });
+    return createResponse("Invalid token", 401);
   }
-
-  // Check if token is expired
   if (tokenData.expiry < Date.now()) {
-    tokenStore.delete(token); // Remove expired token
-    return new Response("Token expired", { status: 401 });
+    tokenStore.delete(token);
+    return createResponse("Token expired", 401);
   }
-
   return tokenData.userId;
 }
 
 async function handler(req: Request): Promise<Response> {
-
   const url = new URL(req.url);
   const path = url.pathname;
 
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*", // Allow all origins
-  };
+  // Handle OPTIONS preflight for CORS
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      },
+    });
+  }
 
-  // -------------------- Auth --------------------
-
-  // POST /auth/login - Authenticate user and return token, user ID, and expiry
+  // POST /auth/login
   if (req.method === "POST" && path === "/auth/login") {
     try {
       const { name, password } = await req.json();
       if (!name || !password) {
-        return new Response("Missing name or password", { status: 400 });
+        return createResponse("Missing name or password", 400);
       }
       const user = await validateUser(name, password);
       if (!user) {
-        return new Response("Invalid credentials", { status: 401 });
+        return createResponse("Invalid credentials", 401);
       }
       const token = generateToken();
       const expiry = Date.now() + 3600 * 1000;
       tokenStore.set(token, { userId: user.id!, expiry });
-      return new Response(JSON.stringify({ token, user_id: user.id!, expiry }), {
-        status: 200,
-        headers,
-      });
+      return createResponse({ token, user_id: user.id!, expiry }, 200);
     } catch (error) {
-      return new Response((error as Error).message || "Server error", { status: 500 });
+      return createResponse((error as Error).message || "Server error", 500);
     }
   }
 
-  // -------------------- Users --------------------
-
-  // GET /users - Get all users
+  // GET /users
   if (req.method === "GET" && path === "/users") {
     try {
       const users = await getUsers();
-      return new Response(JSON.stringify(users), {
-        status: 200,
-        headers,
-      });
+      return createResponse(users, 200);
     } catch (error) {
-      return new Response("Server error retrieving users", { status: 500 });
+      return createResponse("Server error retrieving users", 500);
     }
   }
 
-  // POST /users - Update user
+  // POST /users
   if (req.method === "POST" && path === "/users") {
     const userIdOrError = verifyToken(req);
     if (userIdOrError instanceof Response) {
-      return userIdOrError; // 401 for invalid/missing token
+      return userIdOrError; // Already has CORS via createResponse
     }
     const userId = userIdOrError;
     try {
       const body: Pick<User, 'name' | 'profile_picture_url'> = await req.json();
       if (!body.name || !body.profile_picture_url) {
-        return new Response("Missing name or profile_picture_url", { status: 400 });
+        return createResponse("Missing name or profile_picture_url", 400);
       }
       const updatedUser = await updateUser(userId, body);
-      return new Response(JSON.stringify(updatedUser), {
-        status: 200,
-        headers,
-      });
+      return createResponse(updatedUser, 200);
     } catch (error) {
-      return new Response((error as Error).message === "User not found" ? "User not found" : "Server error", { status: (error as Error).message === "User not found" ? 404 : 500 });
+      return createResponse(
+        (error as Error).message === "User not found" ? "User not found" : "Server error",
+        (error as Error).message === "User not found" ? 404 : 500
+      );
     }
   }
 
-  // -------------------- Messages --------------------
-
-  // GET /messages - Get all messages
+  // GET /messages
   if (req.method === "GET" && path === "/messages") {
     try {
       const messages = await getMessages();
-      return new Response(JSON.stringify(messages), {
-        status: 200,
-        headers,
-      });
+      return createResponse(messages, 200);
     } catch (error) {
-      return new Response("Server error retrieving messages", { status: 500 });
+      return createResponse("Server error retrieving messages", 500);
     }
   }
 
-  // GET /messages/channel/:channel - Get messages for a specific channel
+  // GET /messages/channel/:channel
   if (req.method === "GET" && path.startsWith("/messages/channel/")) {
     try {
       const channel = path.split("/")[3];
       if (!channel) {
-        return new Response("Channel not specified", { status: 400 });
+        return createResponse("Channel not specified", 400);
       }
       const messages = await getMessagesByChannel(decodeURIComponent(channel));
-      return new Response(JSON.stringify(messages), {
-        status: 200,
-        headers,
-      });
+      return createResponse(messages, 200);
     } catch (error) {
-      return new Response("Server error retrieving channel messages", { status: 500 });
+      return createResponse("Server error retrieving channel messages", 500);
     }
   }
 
-  // POST /messages - Add a message
+  // POST /messages
   if (req.method === "POST" && path === "/messages") {
     const userIdOrError = verifyToken(req);
     if (userIdOrError instanceof Response) {
-      return userIdOrError; // 401 for invalid/missing token
+      return userIdOrError; // Already has CORS via createResponse
     }
     const userId = userIdOrError;
     try {
       const body: Pick<Message, 'body' | 'channel'> = await req.json();
       if (!body.body) {
-        return new Response("Missing body", { status: 400 });
+        return createResponse("Missing body", 400);
       }
       const message = await addMessage({ body: body.body, channel: body.channel, user_id: userId });
-      return new Response(JSON.stringify(message), {
-        status: 201,
-        headers,
-      });
+      return createResponse(message, 201);
     } catch (error) {
-      return new Response((error as Error).message || "Server error", { status: 500 });
+      return createResponse((error as Error).message || "Server error", 500);
     }
   }
 
-  // -------------------- Channels --------------------
-
-  // GET /channels - Get list of channels
+  // GET /channels
   if (req.method === "GET" && path === "/channels") {
     try {
       const channels = await getChannels();
-      return new Response(JSON.stringify(channels), {
-        status: 200,
-        headers,
-      });
+      return createResponse(channels, 200);
     } catch (error) {
-      return new Response("Server error retrieving channels", { status: 500 });
+      return createResponse("Server error retrieving channels", 500);
     }
   }
 
-  return new Response("Not found", { status: 400 });
+  // GET /
+  if (req.method === "GET" && path === "/") {
+    return createResponse({ status: "OK", message: "Welcome to the Chat Server API", version: "1.0.0" }, 200);
+  }
+
+  return createResponse("Not found", 404);
 }
 
 serve(handler, { port });
-
 console.log(`Server running on port ${port}`);
