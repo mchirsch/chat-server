@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Messages</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat Messages</h1>
+  <div id="messages"></div>
+
+  <script>
+
+    // Function to get messages from the server
+    async function loadMessages() {
+
+      // Send a request to the server to get messages
+      const response = await fetch('http://ec2-44-250-68-143.us-west-2.compute.amazonaws.com:8000/messages');
+      const messages = await response.json(); // Convert response to JSON
+      
+      // Find the messages container in the HTML
+      const messagesContainer = document.getElementById('messages');
+      
+      // Clear any old messages
+      messagesContainer.innerHTML = '';
+      
+      // Loop through messages using a for loop
+      for (let i = 0; i < messages.length; i++) {
+
+        // Create a new div for each message
+        const messageDiv = document.createElement('div');
+        // Add the 'message' class for styling
+        messageDiv.className = 'message';
+        
+        // Build HTML using string concatenation
+        const message = messages[i];
+        const user = 'User ' + message.user_id;
+        const body = message.body;
+        messageDiv.innerHTML = '<strong>' + user + '</strong> ' + body;
+        
+        // Add the div to the container
+        messagesContainer.appendChild(messageDiv);
+      }
+    }
+
+    // Run the function when the page loads
+    loadMessages();
+  </script>
+</body>
+</html>
