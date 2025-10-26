@@ -2,7 +2,9 @@ import { serve } from "./deps.ts";
 import { getUsers, updateUser, addMessage, getMessages, getMessagesByChannel, getChannels, validateUser } from "./db.ts";
 import { User, Message } from "./types.ts";
 
-// In-memory token store
+const port = Deno.env.get("PORT") ? parseInt(Deno.env.get("PORT")!) : 8000;
+
+// In-memory token store... this is stateful, so not ideal for scalability / serverless
 const tokenStore = new Map<string, { userId: number; expiry: number }>();
 
 // Generate a random token
@@ -170,4 +172,6 @@ async function handler(req: Request): Promise<Response> {
   return new Response("Not found", { status: 400 });
 }
 
-serve(handler);
+serve(handler, { port });
+
+console.log(`Server running on port ${port}`);
