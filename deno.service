@@ -1,0 +1,15 @@
+[Unit]
+Description=Deno Chat Server
+After=network.target
+
+[Service]
+ExecStart=/home/ubuntu/.deno/bin/deno run --allow-net --allow-env /opt/deno-app/server.ts
+WorkingDirectory=/opt/deno-app
+Environment="PORT=8000"
+Environment="DATABASE_URL=your-neon-database-url"
+Restart=always
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target
