@@ -21,7 +21,7 @@ function generateToken(): string {
   return crypto.randomUUID();
 }
 
-// Middleware to verify token
+// Verify token
 function verifyToken(req: Request): number | Response {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -38,6 +38,16 @@ function verifyToken(req: Request): number | Response {
   }
   return tokenData.userId;
 }
+
+// Clear out expired tokens every 10 min
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of tokenStore.entries()) {
+    if (data.expiry < now) {
+      tokenStore.delete(token);
+    }
+  }
+}, 10 * 60 * 1000);
 
 async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -67,7 +77,7 @@ async function handler(req: Request): Promise<Response> {
         return createResponse("Invalid credentials", 401);
       }
       const token = generateToken();
-      const expiry = Date.now() + 3600 * 1000;
+      const expiry = Date.now() + 10 * 60 * 1000; // 10 min expiry
       tokenStore.set(token, { userId: user.id!, expiry });
       return createResponse({ token, user_id: user.id!, expiry }, 200);
     } catch (error) {
