@@ -52,7 +52,7 @@ export async function updateUser(id: number, updates: Pick<User, 'name' | 'profi
 
 export async function getMessages(): Promise<Message[]> {
   try {
-    const result = await sql`SELECT * FROM messages ORDER BY created_at DESC`;
+    const result = await sql`SELECT * FROM messages ORDER BY created_at DESC LIMIT 200`;
     return result as Message[];
   } catch (error) {
     console.error("DB error in getMessages:", error);
@@ -62,7 +62,7 @@ export async function getMessages(): Promise<Message[]> {
 
 export async function getMessagesByChannel(channel: string): Promise<Message[]> {
   try {
-    const result = await sql`SELECT * FROM messages WHERE channel = ${channel} ORDER BY created_at DESC`;
+    const result = await sql`SELECT * FROM messages WHERE channel = ${channel} ORDER BY created_at DESC LIMIT 200`;
     return result as Message[];
   } catch (error) {
     console.error("DB error in getMessagesByChannel:", error);
